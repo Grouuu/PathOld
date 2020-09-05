@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -17,6 +15,9 @@ public class PlayerMovement : MonoBehaviour
 	private float thrust = 0;
 	private float rotation = 0;
 
+	private bool isThrusting = false;
+	private bool isRotating = false;
+
 	private void Start()
 	{
 		rb = GetComponent<Rigidbody>();
@@ -25,8 +26,12 @@ public class PlayerMovement : MonoBehaviour
 
 	private void Update()
 	{
-		ChangeThrust(Input.GetAxisRaw("Vertical"));
-		ChangeRotation(Input.GetAxisRaw("Horizontal"));
+		float thrustIntensity = Input.GetAxisRaw("Vertical");
+		float rotateIntensity = Input.GetAxisRaw("Horizontal");
+		isThrusting = thrustIntensity != 0;
+		isRotating = rotateIntensity != 0;
+		ChangeThrust(thrustIntensity);
+		ChangeRotation(rotateIntensity);
 	}
 
 	private void FixedUpdate()
@@ -35,11 +40,18 @@ public class PlayerMovement : MonoBehaviour
 
 		Vector3 gravity = GetGravity(rb.position);
 
-		FaceGravity(gravityFaceAttract, gravity);
+		if (!isThrusting && !isRotating)
+		{
+			FaceGravity(gravityFaceAttract, gravity);
+		}
 
 		rb.rotation = Quaternion.AngleAxis(rotation, Vector3.up);
 
 		velocity = player.forward * thrust;
+
+		Debug.DrawLine(rb.position, rb.position + player.forward * 5, Color.red); // forward
+		Debug.DrawLine(rb.position, rb.position + (player.forward + gravity.normalized) * 5, Color.blue); // velocity
+		Debug.DrawLine(rb.position, rb.position + ((player.forward + (player.forward + gravity.normalized)) / 2).normalized * 5, Color.green); // path
 
 		rb.position += gravity * dt;
 		rb.position += velocity * dt;
