@@ -4,5 +4,5 @@ using UnityEngine;
 
 public class ObstacleManager : MonoBehaviour
 {
-
+	[HideInInspector] public static List<Obstacle> OBSTACLES = new List<Obstacle>();
 }

@@ -2,14 +2,19 @@
 
 public class PlayerMovement : MonoBehaviour
 {
-	public float thrustPower;
-	public float thrustMin;
-	public float thrustMax;
-	public float rotateSpeed;
-	public float gravityFaceAttract;
+	public float thrustPower = 1;
+	public float thrustMin = 1;
+	public float thrustMax = 5;
+	public float rotateSpeed = 1;
+	public float gravityFaceAttract = 0.001f;
+	public float gravityMax = 1;
+
+	public bool isDebug = true;
+	public bool isGravity = true;
 
 	private Rigidbody rb;
 	private Transform player;
+	private Gravity gravityManager;
 
 	private Vector3 velocity = Vector3.forward;
 	private float thrust = 0;
@@ -22,6 +27,8 @@ public class PlayerMovement : MonoBehaviour
 	{
 		rb = GetComponent<Rigidbody>();
 		player = transform;
+		gravityManager = new Gravity();
+		gravityManager.Start();
 	}
 
 	private void Update()
@@ -38,7 +45,12 @@ public class PlayerMovement : MonoBehaviour
 	{
 		float dt = Time.deltaTime;
 
-		Vector3 gravity = GetGravity(rb.position);
+		Vector3 gravity = gravityManager.GetGravity(rb.position, gravityMax);
+
+		if (!isGravity)
+		{
+			gravity = Vector3.zero;
+		}
 
 		if (!isThrusting && !isRotating)
 		{
@@ -49,9 +61,11 @@ public class PlayerMovement : MonoBehaviour
 
 		velocity = player.forward * thrust;
 
-		Debug.DrawLine(rb.position, rb.position + player.forward * 5, Color.red); // forward
-		Debug.DrawLine(rb.position, rb.position + (player.forward + gravity.normalized) * 5, Color.blue); // velocity
-		Debug.DrawLine(rb.position, rb.position + ((player.forward + (player.forward + gravity.normalized)) / 2).normalized * 5, Color.green); // path
+		if (isDebug)
+		{
+			Debug.DrawLine(rb.position, rb.position + player.forward * 5, Color.red); // forward
+			Debug.DrawLine(rb.position, rb.position + (velocity + gravity).normalized * 5, Color.blue); // path
+		}
 
 		rb.position += gravity * dt;
 		rb.position += velocity * dt;
