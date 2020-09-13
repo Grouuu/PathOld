@@ -11,7 +11,7 @@ public class Gravity
 		obstacles = ObstacleManager.OBSTACLES;
 	}
 
-	public Vector3 GetGravity(Vector3 position, float maxMagnitude)
+	public Vector3 GetGravity(Vector3 position, float maxMagnitude = 0)
 	{
 		Vector3 gravity = Vector3.zero;
 
@@ -30,7 +30,8 @@ public class Gravity
 			}
 		}
 
-		gravity = Vector3.ClampMagnitude(gravity, maxMagnitude);
+		if (maxMagnitude > 0)
+			gravity = Vector3.ClampMagnitude(gravity, maxMagnitude);
 
 		return gravity;
 	}

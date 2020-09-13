@@ -3,11 +3,10 @@
 public class PlayerMovement : MonoBehaviour
 {
 	public float thrustPower = 1;
-	public float thrustMin = 1;
+	public float thrustMin = 0.3f; // must > 0.2
 	public float thrustMax = 5;
-	public float rotateSpeed = 1;
-	public float gravityFaceAttract = 0.001f;
-	public float gravityMax = 1;
+	public float rotateSpeed = 2;
+	public float gravityMax = 4;
 
 	public bool isDebug = true;
 	public bool isGravity = true;
@@ -16,10 +15,13 @@ public class PlayerMovement : MonoBehaviour
 	private Transform player;
 	private Gravity gravityManager;
 
-	private Vector3 velocity = Vector3.forward;
+	private Vector3 velocity = Vector3.zero;
+	private Vector3 thrushtVelocity = Vector3.zero;
+	private Vector3 gravity = Vector3.zero;
 	private float thrust = 0;
-	private float rotation = 0;
 
+	private float thrustIntensity;
+	private float rotateIntensity;
 	private bool isThrusting = false;
 	private bool isRotating = false;
 
@@ -29,67 +31,76 @@ public class PlayerMovement : MonoBehaviour
 		player = transform;
 		gravityManager = new Gravity();
 		gravityManager.Start();
+
+		velocity = new Vector3(0, 0, 0.3f);
 	}
 
 	private void Update()
 	{
-		float thrustIntensity = Input.GetAxisRaw("Vertical");
-		float rotateIntensity = Input.GetAxisRaw("Horizontal");
+		thrustIntensity = Input.GetAxisRaw("Vertical");
+		rotateIntensity = Input.GetAxisRaw("Horizontal");
 		isThrusting = thrustIntensity != 0;
 		isRotating = rotateIntensity != 0;
-		ChangeThrust(thrustIntensity);
-		ChangeRotation(rotateIntensity);
 	}
 
 	private void FixedUpdate()
 	{
 		float dt = Time.deltaTime;
 
-		Vector3 gravity = gravityManager.GetGravity(rb.position, gravityMax);
+		gravity = gravityManager.GetGravity(rb.position, gravityMax);
 
 		if (!isGravity)
-		{
 			gravity = Vector3.zero;
-		}
 
-		if (!isThrusting && !isRotating)
-		{
-			FaceGravity(gravityFaceAttract, gravity);
-		}
+		rb.rotation *= Quaternion.AngleAxis(rotateIntensity * rotateSpeed * dt, Vector3.up);
 
-		rb.rotation = Quaternion.AngleAxis(rotation, Vector3.up);
+		thrust += thrustIntensity * thrustPower * dt;
+		thrust = Mathf.Max(thrust, thrustMin);
+		thrust = Mathf.Min(thrust, thrustMax);
+		thrushtVelocity = player.forward * thrust * thrustPower;
 
-		velocity = player.forward * thrust;
+		velocity = velocity == Vector3.zero ? player.forward * thrustMin : velocity;
+		velocity += gravity * dt;
 
 		if (isDebug)
 		{
-			Debug.DrawLine(rb.position, rb.position + player.forward * 5, Color.red); // forward
-			Debug.DrawLine(rb.position, rb.position + (velocity + gravity).normalized * 5, Color.blue); // path
+			Debug.DrawLine(rb.position, rb.position + thrushtVelocity * 5, Color.red); // thrust
+			Debug.DrawLine(rb.position, rb.position + velocity.normalized * 5, Color.green); // path
 		}
 
-		rb.position += gravity * dt;
+		rb.position += thrushtVelocity * dt;
 		rb.position += velocity * dt;
+
+		DrawPath(dt);
 	}
 
-	public void ChangeThrust(float intensity)
+	private void DrawPath(float dt)
 	{
-		thrust += intensity * thrustPower;
-		thrust = Mathf.Max(thrust, thrustMin);
-		thrust = Mathf.Min(thrust, thrustMax);
-	}
+		int steps = 10;
+		int multiplier = 10;
+		Vector3[] points = new Vector3[steps + 1];
+		points[0] = rb.position;
 
-	public void ChangeRotation(float intensity)
-	{
-		rotation += intensity * rotateSpeed;
-	}
+		Vector3 previousPoint = points[0];
+		Vector3 pos = points[0];
+		Vector3 vel = velocity;
+		int index = 1;
+		for (int i = 0; i < multiplier * steps; i++)
+		{
+			if (i% multiplier == 0 && isDebug)
+				previousPoint = pos;
 
-	private void FaceGravity(float intensity, Vector3 gravity)
-	{
-		rotation += Vector3.SignedAngle(player.forward, gravity, Vector3.up) * intensity;
-	}
+			vel += gravityManager.GetGravity(pos, gravityMax) * dt;
+			pos += (vel + thrushtVelocity) * dt;
 
-	private Vector3 GetGravity(Vector3 pos)
-	{
-		return new Vector3(-2, 0, 0);
+			if (i%multiplier == multiplier - 1)
+			{
+				if (isDebug)
+					Debug.DrawLine(previousPoint, pos, Color.yellow);
+
+				points[index] = pos;
+				index++;
+			}
+		}
 	}
 }
