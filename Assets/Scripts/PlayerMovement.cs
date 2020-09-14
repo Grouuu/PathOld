@@ -2,11 +2,12 @@
 
 public class PlayerMovement : MonoBehaviour
 {
-	public float thrustPower = 1;
+	public float speedMax = 10;
+	public float thrustPower = 50;
 	public float thrustMin = 0.3f; // must > 0.2
-	public float thrustMax = 5;
-	public float rotateSpeed = 2;
-	public float gravityMax = 4;
+	public float thrustMax = 10;
+	public float rotateSpeed = 100;
+	public float gravityMax = 10;
 
 	public bool isDebug = true;
 	public bool isGravity = true;
@@ -22,8 +23,6 @@ public class PlayerMovement : MonoBehaviour
 
 	private float thrustIntensity;
 	private float rotateIntensity;
-	private bool isThrusting = false;
-	private bool isRotating = false;
 
 	private void Start()
 	{
@@ -39,8 +38,6 @@ public class PlayerMovement : MonoBehaviour
 	{
 		thrustIntensity = Input.GetAxisRaw("Vertical");
 		rotateIntensity = Input.GetAxisRaw("Horizontal");
-		isThrusting = thrustIntensity != 0;
-		isRotating = rotateIntensity != 0;
 	}
 
 	private void FixedUpdate()
@@ -48,6 +45,8 @@ public class PlayerMovement : MonoBehaviour
 		float dt = Time.deltaTime;
 
 		gravity = gravityManager.GetGravity(rb.position, gravityMax);
+
+		Debug.Log(gravity);
 
 		if (!isGravity)
 			gravity = Vector3.zero;
@@ -57,10 +56,13 @@ public class PlayerMovement : MonoBehaviour
 		thrust += thrustIntensity * thrustPower * dt;
 		thrust = Mathf.Max(thrust, thrustMin);
 		thrust = Mathf.Min(thrust, thrustMax);
-		thrushtVelocity = player.forward * thrust * thrustPower;
+		thrushtVelocity = player.forward * thrust * thrustPower * dt;
 
-		velocity = velocity == Vector3.zero ? player.forward * thrustMin : velocity;
+		velocity = velocity == Vector3.zero ? player.forward * thrustMin * dt : velocity;
 		velocity += gravity * dt;
+		velocity += thrushtVelocity * dt;
+
+		velocity = Vector3.ClampMagnitude(velocity, speedMax);
 
 		if (isDebug)
 		{
@@ -68,7 +70,6 @@ public class PlayerMovement : MonoBehaviour
 			Debug.DrawLine(rb.position, rb.position + velocity.normalized * 5, Color.green); // path
 		}
 
-		rb.position += thrushtVelocity * dt;
 		rb.position += velocity * dt;
 
 		DrawPath(dt);
@@ -91,7 +92,11 @@ public class PlayerMovement : MonoBehaviour
 				previousPoint = pos;
 
 			vel += gravityManager.GetGravity(pos, gravityMax) * dt;
-			pos += (vel + thrushtVelocity) * dt;
+			vel += thrushtVelocity * dt;
+
+			vel = Vector3.ClampMagnitude(vel, speedMax);
+
+			pos += vel * dt;
 
 			if (i%multiplier == multiplier - 1)
 			{
